@@ -1,0 +1,17 @@
+<%- include("partials/navbar.ejs") %>
+<div class="main">
+    <Form action="/login" method="POST">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" class="form-control" id="email" name="email" placeholder="Enter email">
+            <label for="password">Password</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Password">
+            <button type="submit" class="btn btn-primary">Log in</button>
+        </div>
+    </Form>
+    <div class="signup">
+        <p>Don't have an account? <a href="/signup">Sign up</a></p>
+</div>  
+</div>  
+
+<%- include("partials/footer.ejs") %>

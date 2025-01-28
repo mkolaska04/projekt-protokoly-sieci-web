@@ -1,0 +1,73 @@
+@import url("./variables.css");
+
+button{
+    all:unset 
+}
+body{
+    margin:0px;
+    padding:0px;
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--main-bg-color);
+    color: var(--light-color);
+}
+
+.logo{
+    padding:10px;
+    font-size:2rem;
+    font-family: "Pacifico", cursive;
+    font-weight: 400;
+    font-style: normal;
+}
+.nav{
+    top:0px;
+    position:fixed;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width:100%;
+    background-color:var(--primary-color) ;   
+    box-shadow: 0px 5px 0px rgba(0, 0, 0);
+    z-index: 1;
+}
+.navBtn{
+    display:inline;
+    height: 100%;
+    padding:1rem;
+    font-size:1.5rem;
+    color:var(--light-color);
+}
+.navBtn:hover{
+    border-bottom:4px solid var(--light-color);
+}
+a{
+    text-decoration:none;
+    color: var(--light-color);
+}
+footer{
+    width:90%;
+    margin:0px auto;
+    margin-bottom: 1rem;
+
+}
+.separator{
+    margin:80px 0px 20px; 
+    display:block;
+    height:2px;
+    background-color: var(--primary-color);
+    opacity: 80%;
+}
+.fBox{
+    display:flex;
+    flex-direction:row ;
+    align-items: center;
+    justify-content: space-between;
+}
+.socials a {
+    padding-left:20px;
+    font-size: 1.5rem;
+}
+
+form{
+    all:unset
+}

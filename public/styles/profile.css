@@ -1,0 +1,18 @@
+
+.post{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    background-color: var(--primary-color);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin: 16px 0;
+    width: 100%;
+}
+.posts {
+  display: flex;
+  flex-direction: column-reverse; /* Kolejność od góry do dołu */
+  gap: 15px; /* Odstęp między postami */
+}

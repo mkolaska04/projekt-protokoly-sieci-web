@@ -1,0 +1,55 @@
+<%- include("partials/navbar.ejs") %>
+
+  <div class="main">
+
+    <div class="choose-feed">
+      <h1>Choose your feed</h1>
+      <div class="choose-feed__buttons">
+        <a href="/trending" class="choose-feed__button">Trending</a>
+        <a href="/following" class="choose-feed__button">Following</a>
+      </div>
+    </div>
+    <a href="/create">What are you thinking about <%=username%> ?</a>
+    <% if (locals.modal) { %>
+      <a href="/home" id="modal" class="modal" onClick=""> </a>
+      <div class="modal-content">
+        <a href="/home" class="close-btn">&times;</a>
+        <Form method="POST">
+          <label for="title">Title</label>
+          <input type="text" id="title" name="title" placeholder="Title">
+          <label for="content">Content</label>
+          <textarea id="content" name="content" placeholder="Content"></textarea>
+          <button type="submit">Post</button>
+        </Form>
+      </div>
+      <% } %>
+        <div class="posts">
+          <% if (posts && posts.length> 0) { %>
+            <% posts.forEach(function(post) { %>
+              <div class="post">
+                <div class="post__header">
+                  <p class="post__author">Author: <%= post.username %>
+                  </p>
+                  <p class="post__date">
+                    <%= post.date %>
+                  </p>
+                  <h2>
+                    <%= post.title %>
+                  </h2>
+                </div>
+                <div class="post__content">
+                  <p>
+                    <%= post.content %>
+                  </p>
+                </div>
+              </div>
+              <% }) %>
+                <% } else { %>
+                  <p>No posts yet</p>
+                  <% } %>
+        </div>
+
+  </div>
+
+  <script src="/script.js"></script>
+  <%- include("partials/footer.ejs") %>
