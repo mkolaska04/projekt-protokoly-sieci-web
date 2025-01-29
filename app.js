@@ -12,16 +12,9 @@ import users from "./users.js"
 import posts from "./posts.js"
 
 
-console.log(v4());
-console.log(v4());
-
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const port = 3000
 const app = express()
-
-
-
-
 
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -104,6 +97,9 @@ app.get('/create', (req, res) => {
 })
 console.log(new Date().toISOString());
 
+
+
+
 app.post('/create', (req, res) => {
     const { title, content } = req.body;
     const user_id = req.user.id;
@@ -111,7 +107,7 @@ app.post('/create', (req, res) => {
     const id = v4();
     const date = new Date().toISOString().split('T').join(' ').split('.')[0];
 
-    const tweet = {
+    const post = {
         id,
         user_id,
         username,
@@ -122,18 +118,19 @@ app.post('/create', (req, res) => {
         likes: new Set()
     };
 
-    posts.push(tweet);
-    mqttClient.publish('posts/new', JSON.stringify(tweet));
-    res.redirect('/home');
+    posts.push(post);
+    mqttClient.publish('posts/new', JSON.stringify(post));
+    // res.render('/home');
+    res.json({ success: true, post: post });
 });
 
 
 app.patch('/home/:id', (req, res) => {
-    const tweet = posts.find((t) => t.id === parseInt(req.params.id));
-    if (tweet) {
-        tweet.content = req.body.content;
-        mqttClient.publish('posts/update', JSON.stringify(tweet));
-        res.status(200).json(tweet);
+    const post = posts.find((t) => t.id === parseInt(req.params.id));
+    if (post) {
+        post.content = req.body.content;
+        mqttClient.publish('posts/update', JSON.stringify(post));
+        res.status(200).json(post);
     } else {
         res.status(404).send('Tweet not found');
     }
@@ -175,11 +172,11 @@ app.post('/like/:id', (req, res) => {
 
     const userId = req.cookies.username || "guest";
 
-    if (!tweet.likes) tweet.likes = new Set();
-    if (tweet.likes.has(userId)) {
-        tweet.likes.delete(userId);
+    if (!post.likes) post.likes = new Set();
+    if (post.likes.has(userId)) {
+        post.likes.delete(userId);
     } else {
-        tweet.likes.add(userId);
+        post.likes.add(userId);
     }
 
     const likeCount = post.likes.size;
@@ -196,11 +193,19 @@ app.post('/like/:id', (req, res) => {
 });
 
 
+app.get('/comments/:id', (req, res) => {
+    const post = posts.find(t => t.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    res.json(post.comments);
+});
+
+
 
 
 app.post('/comment/:id', (req, res) => {
-    const tweet = posts.find(t => t.id === parseInt(req.params.id));
-    if (!tweet) return res.status(404).json({ error: "Tweet not found" });
+    const post = posts.find(t => t.id === req.params.id); 
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
     const newComment = {
         id: v4(),
@@ -209,26 +214,25 @@ app.post('/comment/:id', (req, res) => {
         text: req.body.comment
     };
 
-    tweet.comments.push(newComment);
+    post.comments.push(newComment);
+    console.log('New comment added:', newComment);
+    console.log('Updated comments list:', post.comments);
 
-    if (!post.likes) post.likes = new Set();
-    if (post.likes.has(userId)) {
-        post.likes.delete(userId);
-    } else {
-        post.likes.add(userId);
-    }
+    const message = JSON.stringify({
+        event: "newComment",
+        postId: post.id,
+        comment: newComment,
+        commentCount: post.comments.length 
+    });
 
-    
-  
-    const message = JSON.stringify({ event: "newComment", tweetId: tweet.id, comment: newComment });
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
         }
     });
 
-    res.json(newComment);
-})
+    res.json({ comment: newComment, commentCount: post.comments.length }); 
+});
 
 
 

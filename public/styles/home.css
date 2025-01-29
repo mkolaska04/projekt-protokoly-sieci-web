@@ -1,13 +1,13 @@
 
 .modal {
-    display: flex; 
+  display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index:0
+    z-index: 1001; 
   }
   
   .modal-content {
@@ -87,6 +87,10 @@ textarea {
 }
 .posts {
   display: flex;
-  flex-direction: column-reverse; /* Kolejność od góry do dołu */
-  gap: 15px; /* Odstęp między postami */
+  flex-direction: column-reverse; 
+  gap: 15px; 
 }
+
+
+
+

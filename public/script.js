@@ -1,90 +1,43 @@
+// import mqtt from 'mqtt';
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('createPostForm');
-    const modal = document.getElementById('modal');
-    const closeModalBtn = document.querySelector('.close-btn');
-    const postsContainer = document.querySelector('.posts');
 
-    closeModalBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
+    document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            const postId = this.dataset.postId;
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const title = document.getElementById('title').value;
-        const content = document.getElementById('content').value;
-
-        try {
-            const response = await fetch('/create', {
+            fetch(`/like/${postId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content }),
-            });
-
-            if (!response.ok) throw new Error('Failed to create post.');
-
-            const newPost = await response.json();
-            addPostToDOM(newPost);
-
-            
-            form.reset();
-            modal.style.display = 'none';
-        } catch (error) {
-            console.error('Error:', error);
-        }
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector(`#like-count-${postId}`).innerText = data.likes;
+                this.classList.toggle("liked", data.userLiked);
+            })
+            .catch(error => console.error("Error:", error));
+        });
     });
 
- 
-    function addPostToDOM(post) {
-        const postElement = document.createElement('div');
-        postElement.classList.add('post');
-        postElement.innerHTML = `
-            <div class="post__header">
-                <p class="post__author">Author: ${post.username}</p>
-                <p class="post__date">${post.date}</p>
-                <h2>${post.title}</h2>
-            </div>
-            <div class="post__content">
-                <p>${post.content}</p>
-            </div>
-        `;
-        postsContainer.prepend(postElement); 
-    }
-});
-document.querySelectorAll('.like-button').forEach(button => {
-    button.addEventListener('click', function (event) {
-        event.preventDefault(); 
-
-        const postId = this.dataset.postId; 
-
-        fetch(`/like/${postId}`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.querySelector(`#like-count-${postId}`).innerText = data.likes;
-            this.classList.toggle("liked", data.userLiked); 
-        })
-        .catch(error => console.error("Error:", error));
+    document.querySelectorAll('.open-comment-modal').forEach(button => {
+        button.addEventListener('click', function () {
+            const postId = this.dataset.postId;
+            document.getElementById(`comment-modal-${postId}`).style.display = "block";
+        });
     });
-});
 
-
-const socket = io();
-socket.on("postLiked", data => {
-    const likeCountElement = document.querySelector(`#like-count-${data.postId}`);
-    if (likeCountElement) {
-        likeCountElement.innerText = data.likes;
-    }
-});
+    document.querySelectorAll('.close-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            this.closest('.modal').style.display = "none";
+        });
+    });
 
     document.querySelectorAll('.comment-form').forEach(form => {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
             const postId = this.dataset.postId;
-            const commentText = this.querySelector('.comment-input').value.trim();
-
+            const commentText = this.querySelector('.comment-text').value.trim();
+            
             if (!commentText) return;
 
             fetch(`/comment/${postId}`, {
@@ -94,38 +47,30 @@ socket.on("postLiked", data => {
             })
             .then(response => response.json())
             .then(data => {
-                addCommentToDOM(postId, data.username, data.text);
-            });
-
-            this.querySelector('.comment-input').value = ""; 
+                addCommentToDOM(postId, data.comment.username, data.comment.text);
+                this.querySelector('.comment-text').value = "";
+            })
+            .catch(error => console.error("Error posting comment:", error));
         });
     });
 
     function addCommentToDOM(postId, username, text) {
-        const commentSection = document.querySelector(`#comments-${postId}`);
-        const commentElement = document.createElement("p");
-        commentElement.innerHTML = `<b>${username}:</b> ${text}`;
-        commentSection.appendChild(commentElement);
+        const commentSection = document.querySelector(`#comment-list-${postId}`);
+        if (commentSection) {
+            const commentElement = document.createElement("p");
+            commentElement.innerHTML = `<b>${username}:</b> ${text}`;
+            commentSection.appendChild(commentElement);
+        }
     }
 
-   
-    socket.on("newComment", data => {
-        addCommentToDOM(data.postId, data.comment.username, data.comment.text);
-    });
-
-
-    const ws = new WebSocket("ws://localhost:3000"); 
-
-    ws.onopen = () => {
-        console.log("WebSocket connected!");
-    };
+    const ws = new WebSocket("ws://localhost:3000");
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log("WS Message:", data);
+        console.log("WebSocket Message:", data);
 
         if (data.event === "postLiked") {
-            updateLikeCount(data.postId, data.likes);
+            document.querySelector(`#like-count-${data.postId}`).innerText = data.likes;
         }
 
         if (data.event === "newComment") {
@@ -133,18 +78,69 @@ socket.on("postLiked", data => {
         }
     };
 
-    function updateLikeCount(postId, likes) {
-        const likeCountElement = document.querySelector(`#like-count-${postId}`);
-        if (likeCountElement) {
-            likeCountElement.innerText = likes;
-        }
-    }
+    const postModal = document.getElementById('post-modal');
+    const openPostModalBtn = document.getElementById('open-post-modal');
+    const closePostModalBtn = document.getElementById('close-post-modal');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const postForm = document.getElementById('post-form');
+    const postsContainer = document.querySelector('.posts');
 
-    function addCommentToDOM(postId, username, text) {
-        const commentSection = document.querySelector(`#comments-${postId}`);
-        if (commentSection) {
-            const commentElement = document.createElement("p");
-            commentElement.innerHTML = `<b>${username}:</b> ${text}`;
-            commentSection.appendChild(commentElement);
+    postModal.style.display = "none";
+    modalOverlay.style.display = "none";
+
+    openPostModalBtn.addEventListener('click', () => {
+        postModal.style.display = "block";
+        modalOverlay.style.display = "block";
+    });
+
+    closePostModalBtn.addEventListener('click', () => {
+        postModal.style.display = "none";
+        modalOverlay.style.display = "none";
+    });
+    
+    postForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('post-title').value.trim();
+        const content = document.getElementById('post-content').value.trim();
+
+        if (!title || !content) return;
+
+        try {
+            const response = await fetch('/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, content }),
+            });
+
+            const data = await response.json();
+            addPostToDOM(data.post);
+            postForm.reset();
+            postModal.style.display = "none";
+            modalOverlay.style.display = "none";
+        } catch (error) {
+            console.error("Error posting:", error);
         }
-    }
+    });
+
+  const mqttClient = mqtt.connect('wss://test.mosquitto.org:8081', { reconnectPeriod: 1000 });
+
+  mqttClient.on('connect', () => {
+      console.log("✅ Connected to MQTT Broker.");
+      mqttClient.subscribe('posts/new', (err) => {
+          if (err) console.error("❌ Error subscribing to MQTT:", err);
+          else console.log("📡 Subscribed to 'posts/new'");
+      });
+  });
+
+  mqttClient.on('message', (topic, message) => {
+      console.log("📩 MQTT received:", topic, message.toString());
+
+      if (topic === 'posts/new') {
+          const newPost = JSON.parse(message.toString());
+          location.reload();
+      }
+    
+  });
+
+
+});

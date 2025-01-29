@@ -9,31 +9,36 @@
         <a href="/following" class="choose-feed__button">Following</a>
       </div>
     </div>
-    <a href="/create">What are you thinking about <%=username%> ?</a>
-    <% if (locals.modal) { %>
-      <a href="/home" id="modal" class="modal" onClick=""> </a>
-      <div class="modal-content">
-        <a href="/home" class="close-btn">&times;</a>
-        <Form method="POST">
-          <label for="title">Title</label>
-          <input type="text" id="title" name="title" placeholder="Title">
-          <label for="content">Content</label>
-          <textarea id="content" name="content" placeholder="Content"></textarea>
-          <button type="submit">Post</button>
-        </Form>
-      </div>
-      <% } %>
-        <div class="posts">
-          <% if (posts && posts.length> 0) { %>
-            <% posts.forEach(function(post) { %>
-              <%- include("partials/post.ejs", {post: post}) %>
-              <% }) %>
-                <% } else { %>
-                  <p>No posts yet</p>
-                  <% } %>
+  
+  
+    <button id="open-post-modal">What are you thinking about <%= locals.username || 'Guest' %>?</button>
+
+    <!-- 🔥 Modal do tworzenia posta -->
+    <div id="post-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-post-modal">&times;</span>
+            <h2>Create a new post</h2>
+            <form id="post-form" method="post">
+                <label for="title">Title</label>
+                <input type="text" id="post-title" name="title" placeholder="Title" required>
+                <label for="content">Content</label>
+                <textarea id="post-content" name="content" placeholder="Content" required></textarea>
+                <button type="submit">Post</button>
+            </form>
         </div>
+    </div>
 
+    <div id="modal-overlay" class="modal-overlay"></div>
+    
+    <div class="posts">
+        <% if (posts && posts.length > 0) { %>
+            <% posts.forEach(function(post) { %>
+                <%- include("partials/post.ejs", { post: post }) %>
+            <% }) %>
+        <% } else { %>
+            <p>No posts yet</p>
+        <% } %>
+    </div>
   </div>
-
   <script src="/script.js"></script>
   <%- include("partials/footer.ejs") %>

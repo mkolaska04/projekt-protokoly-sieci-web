@@ -56,6 +56,7 @@ footer{
     height:2px;
     background-color: var(--primary-color);
     opacity: 80%;
+    z-index: 1;
 }
 .fBox{
     display:flex;
