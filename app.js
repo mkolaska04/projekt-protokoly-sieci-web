@@ -8,6 +8,8 @@ import bodyParser from "body-parser"
 import cookieParser from "cookie-parser"
 import { v4 } from "uuid" 
 import path from "path"
+import users from "./users.js"
+import posts from "./posts.js"
 
 
 console.log(v4());
@@ -18,20 +20,9 @@ const port = 3000
 const app = express()
 
 
-let tweets = []
 
-let users = [
-    {   id:"02fdae9c-9178-460c-bf9e-0c4e6a5b6253",
-        username: 'admin',
-        email: "admin@gmail.com",
-        password: 'adminadmin123'
-    },
-    {   id:"687bc087-3fe8-4a1c-8b34-2e790b1685ff",
-        username: 'user1',
-        email: "user1@wp.pl",
-        password: 'user123'
-    },
-    ]
+
+
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set("view engine", "ejs")
@@ -63,15 +54,16 @@ const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
+
     ws.on('message', (message) => {
         console.log(`Received message from WebSocket: ${message}`);
     });
 
-    ws.send('Welcome to the WebSocket server!');
+    ws.send(JSON.stringify({ event: "connected", message: "WebSocket is working!" }));
 });
 
 app.get('/home', (req, res) => {
-    res.render('home', { posts:tweets });
+    res.render('home', { posts:posts });
 });
 
 app.get('/login', (req, res) => {
@@ -79,8 +71,15 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/explore', (req, res) => {
-    res.render('explore');
+    const pattern = req.query.search ? req.query.search.toLowerCase() : ""; 
+    const results = pattern ? users.filter(u => u.username.toLowerCase().includes(pattern)) : []; 
+
+    console.log('Search results:', results);
+
+    res.render('explore', { results, searchQuery: req.query.search || "" }); 
 });
+
+
 
 
 app.get('/logout', (req, res) => {
@@ -93,7 +92,7 @@ app.get('/logout', (req, res) => {
 app.get('/profile/:id', (req, res) => {
     const { id } = req.params;
 
-    const userPosts = tweets.filter(post => post.user_id === id);
+    const userPosts = posts.filter(post => post.user_id === id);
 
     res.render('profile', { posts: userPosts });
 });
@@ -101,7 +100,7 @@ app.get('/profile/:id', (req, res) => {
 
 
 app.get('/create', (req, res) => {
-    res.render('home', { modal: true, posts: tweets });
+    res.render('home', { modal: true, posts: posts });
 })
 console.log(new Date().toISOString());
 
@@ -120,20 +119,20 @@ app.post('/create', (req, res) => {
         content,
         date,
         comments: [],
-        likes: 0,
+        likes: new Set()
     };
 
-    tweets.push(tweet);
-    mqttClient.publish('tweets/new', JSON.stringify(tweet));
+    posts.push(tweet);
+    mqttClient.publish('posts/new', JSON.stringify(tweet));
     res.redirect('/home');
 });
 
 
 app.patch('/home/:id', (req, res) => {
-    const tweet = tweets.find((t) => t.id === parseInt(req.params.id));
+    const tweet = posts.find((t) => t.id === parseInt(req.params.id));
     if (tweet) {
         tweet.content = req.body.content;
-        mqttClient.publish('tweets/update', JSON.stringify(tweet));
+        mqttClient.publish('posts/update', JSON.stringify(tweet));
         res.status(200).json(tweet);
     } else {
         res.status(404).send('Tweet not found');
@@ -141,10 +140,10 @@ app.patch('/home/:id', (req, res) => {
 });
 
 app.delete('/home/:id', (req, res) => {
-    const index = tweets.findIndex((t) => t.id === parseInt(req.params.id));
+    const index = posts.findIndex((t) => t.id === parseInt(req.params.id));
     if (index !== -1) {
-        const [deletedTweet] = tweets.splice(index, 1);
-        mqttClient.publish('tweets/delete', JSON.stringify(deletedTweet));
+        const [deletedTweet] = posts.splice(index, 1);
+        mqttClient.publish('posts/delete', JSON.stringify(deletedTweet));
         res.status(200).json(deletedTweet);
     } else {
         res.status(404).send('Tweet not found');
@@ -169,6 +168,69 @@ function authenticateUser(req, res, next) {
     res.locals.isLoggedIn = false;
     next();
 }
+
+app.post('/like/:id', (req, res) => {
+    const post = posts.find(p => p.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    const userId = req.cookies.username || "guest";
+
+    if (!tweet.likes) tweet.likes = new Set();
+    if (tweet.likes.has(userId)) {
+        tweet.likes.delete(userId);
+    } else {
+        tweet.likes.add(userId);
+    }
+
+    const likeCount = post.likes.size;
+
+    
+    const message = JSON.stringify({ event: "postLiked", postId: post.id, likes: likeCount });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+
+    res.json({ likes: likeCount, userLiked: post.likes.has(userId) });
+});
+
+
+
+
+app.post('/comment/:id', (req, res) => {
+    const tweet = posts.find(t => t.id === parseInt(req.params.id));
+    if (!tweet) return res.status(404).json({ error: "Tweet not found" });
+
+    const newComment = {
+        id: v4(),
+        user_id: req.user.id,
+        username: req.user.username,
+        text: req.body.comment
+    };
+
+    tweet.comments.push(newComment);
+
+    if (!post.likes) post.likes = new Set();
+    if (post.likes.has(userId)) {
+        post.likes.delete(userId);
+    } else {
+        post.likes.add(userId);
+    }
+
+    
+  
+    const message = JSON.stringify({ event: "newComment", tweetId: tweet.id, comment: newComment });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+
+    res.json(newComment);
+})
+
+
 
 
 

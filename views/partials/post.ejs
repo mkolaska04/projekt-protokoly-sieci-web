@@ -1,0 +1,40 @@
+<div class="post">
+    <div class="post__header">
+      <p class="post__author">Author: <%= post.username %>
+      </p>
+      <p class="post__date">
+        <%= post.date %>
+      </p>
+      <h2>
+        <%= post.title %>
+      </h2>
+    </div>
+    <div class="post__content">
+      <p>
+        <%= post.content %>
+      </p>
+    </div>
+    <div class="post__footer">
+      <span id="like-count-<%= post.id %>">
+        <%= post.likes.size %>
+      </span>
+      <button class="like-button" data-post-id="<%= post.id %>">Like</button>
+      <span id="comment-count-<%= post.id %>">
+        <%= post.comments.length %>
+      </span>
+      <button class="comment-button" data-post-id="<%= post.id %>">Comment</button>
+      <form class="comment-form" data-post-id="<%= post.id %>">
+        <input type="text" class="comment-input" placeholder="Write a comment..." required>
+        <button type="submit">Comment</button>
+      </form>
+      <div id="comments-<%= post.id %>">
+        <% post.comments.forEach(comment=> { %>
+          <p><b>
+              <%= comment.username %>:
+            </b>
+            <%= comment.text %>
+          </p>
+          <% }) %>
+      </div>
+    </div>
+  </div>
