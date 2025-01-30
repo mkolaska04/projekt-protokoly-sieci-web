@@ -1,13 +1,15 @@
-<div class="post">
+<div class="post" id="post-<%=post.id%>">
   <div class="post__header">
       <p class="post__author">Author: <%= post.username %></p>
       <p class="post__date"><%= post.date %></p>
-      <h2><%= post.title %></h2>
-      <button class="delete-button" type="submit" data-post-id="<%= post.id %>">Delete</button>
-      <button class="edit-button" type="submit" data-post-id="<%= post.id %>">Edit</button>
+      <h2 class="post-title"><%= post.title %></h2>
+      <% if (post.user_id === user_id) { %>
+        <button class="edit-button" data-post-id="<%= post.id %>">✏️ Edytuj</button>
+        <button class="delete-button" data-post-id="<%= post.id %>">🗑️ Usuń</button>
+    <% } %>
   </div>
-  <div class="post__content">
-      <p><%= post.content %></p>
+  <div class="post__content" id="post-content-<%=post.id%>">
+      <%= post.content %>
   </div>
   <div class="post__footer">
       <span id="like-count-<%= post.id %>"><%= post.likes ? post.likes.size : 0 %></span>

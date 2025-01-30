@@ -1,3 +1,4 @@
+
 document.addEventListener('DOMContentLoaded', () => {
     const postModal = document.getElementById('post-modal');
     const openPostModalBtn = document.getElementById('open-post-modal');
@@ -24,24 +25,77 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', function () {
             this.closest('.modal').style.display = "none";
             document.getElementById('modal-overlay').style.display = "none";
-            // location.reload();
         });
     });
 
-    document.querySelectorAll('delete-button').forEach(form => {
-        form.addEventListener('submit', function (event) {
+    document.querySelectorAll(".delete-button").forEach(button => {
+        button.addEventListener("click", function (event) {
             event.preventDefault();
             const postId = this.dataset.postId;
+
+            if (!confirm("❌ Czy na pewno chcesz usunąć ten post?")) return;
+
             fetch(`/delete/${postId}`, {
-                method: 'DELETE',   
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id:postId })
+                method: "DELETE",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" }
             })
                 .then(response => response.json())
                 .then(data => {
-                    location.reload();
+                    if (data.success) {
+                        alert("✅ Post został usunięty!");
+                        document.getElementById(`post-${postId}`).remove();
+                    } else {
+                        alert(`🚨 Błąd: ${data.error}`);
+                    }
                 })
-                .catch(error => console.error("Error deleting post:", error));
+                .catch(error => console.error("❌ Błąd usuwania posta:", error));
+        });
+    });
+
+    document.querySelectorAll(".edit-button").forEach(button => {
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+            const postId = this.dataset.postId;
+            const postContentElement = document.querySelector(`#post-content-${postId}`);
+            const currentContent = postContentElement.innerText;
+            console.log(currentContent)
+            // 🔥 Dodajemy dynamicznie pole do edycji zamiast prompt()
+            const editForm = document.createElement("div");
+            editForm.innerHTML = `
+                <textarea id="edit-textarea-${postId}" rows="3">${currentContent}</textarea>
+                <button class="save-edit-button" data-post-id="${postId}">💾 Zapisz</button>
+                <button class="cancel-edit-button" data-post-id="${postId}">❌ Anuluj</button>
+            `;
+
+            postContentElement.replaceWith(editForm);
+
+            document.querySelector(`.save-edit-button[data-post-id="${postId}"]`).addEventListener("click", function () {
+                const newContent = document.querySelector(`#edit-textarea-${postId}`).value.trim();
+                if (!newContent || newContent === currentContent) return;
+
+                fetch(`/edit/${postId}`, {
+                    method: "PATCH",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: newContent })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert("✅ Post został zaktualizowany!");
+                            editForm.replaceWith(postContentElement);
+                            postContentElement.innerText = newContent;
+                        } else {
+                            alert(`🚨 Błąd: ${data.error}`);
+                        }
+                    })
+                    .catch(error => console.error("❌ Błąd edycji posta:", error));
+            });
+
+            document.querySelector(`.cancel-edit-button[data-post-id="${postId}"]`).addEventListener("click", function () {
+                editForm.replaceWith(postContentElement);
+            });
         });
     });
     if (openPostModalBtn) {
@@ -95,14 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("📩 MQTT received:", topic, message.toString());
 
         try {
-            const data = JSON.parse(message.toString()); // ✅ Parsowanie JSON
+            const data = JSON.parse(message.toString());
             console.log(`Topic: ${topic}, Data:`, data);
 
             if (topic === 'posts/new') {
                 location.reload();
             } else if (topic === 'comments/new') {
                 console.log("🆕 New comment received:", data);
-                // addCommentToDOM(data.postId, data.username, data.text);
                 updateCommentCount(data.postId, data.commentCount);
             } else if (topic === 'posts/like') {
                 console.log("👍 Like received:", data);
@@ -112,7 +165,66 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("❌ Error parsing MQTT message:", error);
         }
     });
+    let CURRENT_USER_ID = null;
 
+    fetch("/current-user", { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.userId) {
+                CURRENT_USER_ID = data.userId;
+                console.log(`👤 Zalogowany użytkownik: ${CURRENT_USER_ID}`);
+                connectWebSocket(CURRENT_USER_ID);
+            } else {
+                console.error("❌ Brak zalogowanego użytkownika");
+            }
+        })
+        .catch((error) => console.error("⚠️ Błąd:", error));
+
+    function connectWebSocket(userId) {
+        const socket = new WebSocket(`ws://localhost:8080/?userId=${userId}`);
+
+        socket.onopen = () => {
+            console.log("✅ WebSocket Połączony!");
+            socket.send(JSON.stringify({ type: "user_connected", userId }));
+        };
+
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === "post_liked") {
+                notifyAuthor(message, "liked");
+            } else if (message.type === "comment_added") {
+                notifyAuthor(message, "commented on");
+            } else if (message.type === "followed") {
+                console.log("📢 Followed:", message);
+                return alert(`📢 ${message.liker} followed You`);
+            }
+        };
+
+        socket.onclose = () => console.log("❌ WebSocket Rozłączony!");
+        socket.onerror = (error) => console.error("⚠️ Błąd WebSocket:", error);
+    }
+
+    function notifyAuthor(likeData, action) {
+        return alert(`📢 Your post '${likeData.postTitle}' was ${action} by ${likeData.liker}`);
+    }
+
+    document.querySelectorAll('.follow-button').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            const userId = this.dataset.userId;
+
+            fetch(`/follow/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    this.innerText = data.following ? "Unfollow" : "Follow";
+                })
+                .catch(error => console.error("Error:", error));
+        }
+        );
+    });
 
 
     document.querySelectorAll('.comment-form').forEach(form => {
