@@ -8,8 +8,8 @@ import bodyParser from "body-parser"
 import cookieParser from "cookie-parser"
 import { v4 } from "uuid" 
 import path from "path"
-import users from "./users.js"
-import posts from "./posts.js"
+import users from "./data/users.js"
+import posts from "./data/posts.js"
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -36,6 +36,12 @@ app.use(authenticateUser);
 const mqttClient = mqtt.connect('mqtt://test.mosquitto.org');
 mqttClient.on('connect', () => {
     console.log('Connected to MQTT Broker');
+
+    mqttClient.subscribe(['posts/new', 'posts/update', 'posts/delete', 'posts/like', 'comments/new'], (err) => {
+        if (err) {
+            console.error('Error subscribing to topics', err);
+        }
+    });
 });
 
 mqttClient.on('message', (topic, message) => {
@@ -120,12 +126,13 @@ app.post('/create', (req, res) => {
 
     posts.push(post);
     mqttClient.publish('posts/new', JSON.stringify(post));
-    // res.render('/home');
+
     res.json({ success: true, post: post });
 });
 
 
-app.patch('/home/:id', (req, res) => {
+
+app.patch('/edit/:id', (req, res) => {
     const post = posts.find((t) => t.id === parseInt(req.params.id));
     if (post) {
         post.content = req.body.content;
@@ -136,7 +143,7 @@ app.patch('/home/:id', (req, res) => {
     }
 });
 
-app.delete('/home/:id', (req, res) => {
+app.delete('/delete/:id', (req, res) => {
     const index = posts.findIndex((t) => t.id === parseInt(req.params.id));
     if (index !== -1) {
         const [deletedTweet] = posts.splice(index, 1);
@@ -167,37 +174,37 @@ function authenticateUser(req, res, next) {
 }
 
 app.post('/like/:id', (req, res) => {
-    const post = posts.find(p => p.id === req.params.id);
-    if (!post) return res.status(404).json({ error: "Post not found" });
-
-    const userId = req.cookies.username || "guest";
-
-    if (!post.likes) post.likes = new Set();
-    if (post.likes.has(userId)) {
-        post.likes.delete(userId);
-    } else {
-        post.likes.add(userId);
+    const postId = req.params.id;
+    const post = posts.find(p => p.id === postId);
+    
+    if (!post) {
+        return res.status(404).json({ error: "Post not found" });
     }
 
-    const likeCount = post.likes.size;
+    if (!post.likes) post.likes = new Set();
+
+    const userId = req.user.id; 
+
+    if (post.likes.has(userId)) {
+        post.likes.delete(userId); 
+    } else {
+        post.likes.add(userId); 
+    }
 
     
-    const message = JSON.stringify({ event: "postLiked", postId: post.id, likes: likeCount });
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-        }
-    });
+    const likeCount = post.likes.size;
 
-    res.json({ likes: likeCount, userLiked: post.likes.has(userId) });
+    mqttClient.publish('posts/like', JSON.stringify({ postId, likes: likeCount }));
+
+    res.json({ success: true, likes: likeCount, userLiked: post.likes.has(userId) });
 });
+
 
 
 app.get('/comments/:id', (req, res) => {
     const post = posts.find(t => t.id === req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
-
-    res.json(post.comments);
+    res.json(post.comments); 
 });
 
 
@@ -211,12 +218,13 @@ app.post('/comment/:id', (req, res) => {
         id: v4(),
         user_id: req.user.id,
         username: req.user.username,
-        text: req.body.comment
+        text: req.body.comment,
+        
     };
 
     post.comments.push(newComment);
-    console.log('New comment added:', newComment);
-    console.log('Updated comments list:', post.comments);
+    // console.log('New comment added:', newComment);
+    // console.log('Updated comments list:', post.comments);
 
     const message = JSON.stringify({
         event: "newComment",
@@ -225,11 +233,7 @@ app.post('/comment/:id', (req, res) => {
         commentCount: post.comments.length 
     });
 
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
-        }
-    });
+   mqttClient.publish('comments/new', message);
 
     res.json({ comment: newComment, commentCount: post.comments.length }); 
 });
@@ -276,7 +280,10 @@ app.post('/signup', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.render('login');
+    if (req.cookies.username) {
+        res.redirect('/home');
+    }
+    res.redirect('/login');
 });
 
 app.listen(port, () => {
