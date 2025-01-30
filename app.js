@@ -11,6 +11,7 @@ import path from "path"
 import users from "./data/users.js"
 import posts from "./data/posts.js"
 import cookie from "cookie"
+import bcrypt from "bcryptjs";
 
 let clients = new Map();
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -332,33 +333,34 @@ app.post('/comment/:id', (req, res) => {
 
 
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { email, password } = req.body;
-    const user = users.find((u) => u.email === email && u.password === password);
-    if (user) {
-        res.cookie('username', user.username, {
-            httpOnly: true,
-            maxAge: 1000 * 60 * 60 * 24,
-            secure:false,
-            sameSite:'Lax'
-         
-        });
-        res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
-        res.redirect('/home');
-    } else {
-        res.status(401).send('Invalid credentials');
+    const user = users.find((u) => u.email === email);
+    if (!user) {
+        return res.render('login', { error: 'There is no account linked to this email' });
     }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        return res.render('login', { error: 'Incorrect password' });
+    }
+
+    res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
+    res.cookie('username', user.username, {httpOnly: true, maxAge: 1000 * 60 * 60 * 24, secure:false, sameSite:'Lax'});
+    res.redirect('/home');
 });
 
-app.get('/signup', (req, res) => {
+app.get('/signup', async (req, res) => {
+    const haslo = await bcrypt.hash("user123", 10);
+    console.log(haslo);
     res.render('signup');
 })
 
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
     const { username, email, password, password2 } = req.body;
     if (password !== password2) {
         return res.render('signup', { error: 'Passwords do not match' });
     }
+    const hashedPassword = await bcrypt.hash(password, 10);
     if (users.find((u) => u.email === email)) {
         return res.render('signup', { error: 'User with this email already exists' });
     } else {
@@ -366,7 +368,7 @@ app.post('/signup', (req, res) => {
             id: v4(),
             username,
             email,
-            password,
+            password:hashedPassword,
             followed: []
 
         };
