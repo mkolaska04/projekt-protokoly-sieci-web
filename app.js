@@ -92,7 +92,30 @@ server.listen(8080, () => {
 }
 )
 
+app.get('/users/:id', (req, res) => {
+    const user = users.find(u => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+})
+
+app.patch('/users/:id', (req, res) => {
+    const user = users.find(u => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const { type, value } = req.body; 
+    if (type === "password") {
+        user.password = bcrypt.hashSync(value, 10);
+    } else {
+        user[type] = value;
+        if (type === "username") {
+            res.cookie('username', value, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
+        }
+    }
+    res.status(200).json({ success: true, message: "User updated", user });
+})
 app.get('/home', (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
     res.render('home', { posts: posts });
 });
 
@@ -361,7 +384,6 @@ app.delete('/comment/:id/:commentId', (req, res) => {
     res.json({ success: true, message: "Comment deleted" });
 }
 )
-
 
 app.patch('/comment/:id/:commentId', (req, res) => {
     const post = posts.find(t => t.id === req.params.id);

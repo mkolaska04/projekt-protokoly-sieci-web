@@ -1,27 +1,38 @@
 <%- include("partials/navbar.ejs") %>
   <div class="main">
     <div class="profile">
-      <h1>Profile of <%= user.username %> 
-      </h1>    
-      <% if (user.id !== locals.user_id) { %>
-      <button class="follow-button"  id="follow-<%=user.id%>" data-user-id="<%= user.id %>">
-        <% if (user.followed.some(x => x===locals.user_id)) { %>
-          Unfollow
-          <% } else { %> 
-        Follow
-         <% } %>
-      </button>
-      <% } %>
+      <h1>Profile of <%= user.username %>
+      </h1>
+      <% if (locals.user_id===user.id) { %>
+        <div class="edit" id="edit-<%=user.id%>">
+          <button data-user-id="<%=user.id%>" data-type="username" class="edit-profile"
+            id="edit-username-<%= user.id %>">Edit username</button>
+          <button data-user-id="<%=user.id%>" data-type="email" class="edit-profile"
+            id="edit-email-<%= user.id %>">Change email</button>
+          <button data-user-id="<%=user.id%>" data-type="password" class="edit-profile"
+            id="edit-password-<%= user.id %>">Change password</button>
+        </div>
 
-      <div class="posts">
-        <% if (posts && posts.length> 0) { %>
-          <% posts.forEach(function(post) { %>
-            <%- include("partials/post.ejs", {post: post}) %>
-              <% }) %>
+        <% } %>
+          <% if (user.id !==locals.user_id) { %>
+            <button class="follow-button" id="follow-<%=user.id%>" data-user-id="<%= user.id %>">
+              <% if (user.followed.some(x=> x===locals.user_id)) { %>
+                Unfollow
                 <% } else { %>
-                  <p>No posts yet</p>
+                  Follow
                   <% } %>
-      </div>
+            </button>
+            <% } %>
+
+              <div class="posts">
+                <% if (posts && posts.length> 0) { %>
+                  <% posts.forEach(function(post) { %>
+                    <%- include("partials/post.ejs", {post: post}) %>
+                      <% }) %>
+                        <% } else { %>
+                          <p>No posts yet</p>
+                          <% } %>
+              </div>
     </div>
   </div>
 

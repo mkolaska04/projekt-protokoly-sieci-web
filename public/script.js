@@ -27,6 +27,57 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-overlay').style.display = "none";
         });
     });
+    document.querySelectorAll('.edit-profile').forEach(button => {
+        button.addEventListener('click', function () {
+            console.log("edit profile")
+            const userId = this.dataset.userId;
+            console.log(userId)
+            const type = this.dataset.type;
+            const editElement = document.getElementById(`edit-${userId}`);
+            if (!editElement) {
+                console.error(`Element edit-${userId} nie istnieje!`);
+                return;
+            }
+
+            const editForm = document.createElement("div");
+            editForm.innerHTML = `
+                <input type="${type}" id="edit-form-${userId}" placeholder="Change ${type}" />
+                <button class="save-button" data-user-id="${userId}">💾 Zapisz</button>
+                <button class="cancel-button" data-user-id="${userId}">❌ Anuluj</button>
+            `;
+
+            editElement.replaceWith(editForm);
+            document.querySelector(`.save-button[data-user-id="${userId}"]`).addEventListener('click', function () {
+                const newContent = document.querySelector(`#edit-form-${userId}`).value.trim();
+                fetch(`/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type, value: newContent })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert("✅ Profil został zaktualizowany!");
+                            editForm.replaceWith(editElement);
+                            location.reload();
+                        } else {
+                            alert(`🚨 Błąd: ${data.error}`);
+                            
+                        }
+                    })
+                    .catch(error => console.error("❌ Błąd edycji:", error));
+            });
+            document.querySelector(`.cancel-button[data-user-id="${userId}"]`).addEventListener('click', function () {
+                editForm.replaceWith(editElement);
+            })
+        })
+    });
+
+
+
+
+
+
     document.querySelectorAll('.delete-comment').forEach(button => {
         button.addEventListener('click', function (event) {
             event.preventDefault();
@@ -225,6 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (topic === 'posts/like') {
                 console.log("👍 Like received:", data);
                 updateLikeCount(data.postId, data.likes);
+            } else if (topic === "posts/delete") {
+                console.log("🗑️ Delete received:", data);
+                alert("Post został usunięty!");
+                location.reload();
+            } else if (topic === "posts/update") {
+                console.log("✏️ Edit received:", data);
+                alert("Post został zaktualizowany!");
+                location.reload();
             }
         } catch (error) {
             console.error("❌ Error parsing MQTT message:", error);
