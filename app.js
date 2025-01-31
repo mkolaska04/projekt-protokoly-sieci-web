@@ -96,6 +96,19 @@ app.get('/home', (req, res) => {
     res.render('home', { posts: posts });
 });
 
+app.get('/all', (req, res) => {
+    res.render('home', { posts: posts });
+}
+)
+
+app.get('/following', (req, res) => {
+    const user_id = req.user.id;
+    const followedusers = users.filter(user => user.followed.includes(user_id));
+    const followedPosts = followedusers.flatMap(user => user.posts)
+   
+    return res.render('home', { posts: followedPosts });
+});
+
 app.get('/login', (req, res) => {
     res.render('login');
 });
@@ -132,20 +145,23 @@ app.post('/follow/:id', (req, res) => {
     const user = users.find(u => u.id === id);
 
     if (!user) return res.status(404).send('User not found');
-
-    follower.followed.push(user.id);
-   
-
-    const authorWs = clients.get(id);
-
-    if (authorWs && authorWs.readyState === WebSocket.OPEN) {
-        console.log(`📡 Wysyłanie powiadomienia do autora ${id}`);
-        authorWs.send(JSON.stringify({
-            type: "followed",
-            liker: follower.username,
-        }));
+    if (user.followed.some(x => x===follower_id)) {
+        user.followed = user.followed.filter(f => f !== follower_id);
+        console.log(`🚫 Użytkownik ${follower_id} przestał obserwować użytkownika ${id}`);
+        res.json({ success: true, followed: false });
     } else {
-        console.log(`🚨 Autor ${id} NIE jest online!`);
+        user.followed.push(follower_id);
+        const authorWs = clients.get(id);
+        if (authorWs && authorWs.readyState === WebSocket.OPEN) {
+            console.log(`📡 Wysyłanie powiadomienia do autora ${id}`);
+            authorWs.send(JSON.stringify({
+                type: "followed",
+                liker: follower.username,
+            }));
+        } else {
+            console.log(`🚨 Autor ${id} NIE jest online!`);
+        }
+        res.json({ success: true, followed: true });
     }
 });
 
@@ -163,6 +179,7 @@ app.post('/create', (req, res) => {
     const { title, content } = req.body;
     const user_id = req.user.id;
     const username = req.user.username;
+    const user = users.find(u => u.id === user_id);
     const id = v4();
     const date = new Date().toISOString().split('T').join(' ').split('.')[0];
 
@@ -176,7 +193,7 @@ app.post('/create', (req, res) => {
         comments: [],
         likes: new Set()
     };
-
+    user.posts.push(post);
     posts.push(post);
     mqttClient.publish('posts/new', JSON.stringify(post));
 
@@ -198,6 +215,7 @@ app.patch("/edit/:id", (req, res) => {
     }
 
     post.content = content;
+    
     mqttClient.publish("posts/update", JSON.stringify(post));
     return res.status(200).json({ success: true, message: "Post zaktualizowany!", post });
 });
@@ -205,6 +223,7 @@ app.patch("/edit/:id", (req, res) => {
 app.delete("/delete/:id", (req, res) => {
     const postId = req.params.id;
     const userId = req.cookies.user_id;
+    const user = users.find((u) => u.id === userId);
 
     const index = posts.findIndex((p) => p.id === postId);
     if (index === -1) return res.status(404).json({ error: "Post not found" });
@@ -212,7 +231,7 @@ app.delete("/delete/:id", (req, res) => {
     if (posts[index].user_id !== userId) {
         return res.status(403).json({ error: "Nie masz uprawnień do usunięcia tego posta!" });
     }
-
+    user.posts = user.posts.filter((p) => p.id !== postId);
     const deletedPost = posts.splice(index, 1);
     mqttClient.publish("posts/delete", JSON.stringify(deletedPost));
     return res.status(200).json({ success: true, message: "Post usunięty!" });
@@ -272,13 +291,12 @@ app.post('/like/:id', (req, res) => {
     } else {
         console.log(`🚨 Autor ${post.user_id} NIE jest online!`);
     }
-
     return res.json({ success: true, likes: likeCount, userLiked: post.likes.has(userId) });
 });
 
 
 
-app.get('/comments/:id', (req, res) => {
+app.get('/comment/:id', (req, res) => {
     const post = posts.find(t => t.id === req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
     res.json(post.comments);
@@ -331,7 +349,32 @@ app.post('/comment/:id', (req, res) => {
     res.json({ comment: newComment, commentCount: post.comments.length });
 });
 
+app.delete('/comment/:id/:commentId', (req, res) => {
+    const post = posts.find(t => t.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
+    const commentId = req.params.commentId;
+    const commentIndex = post.comments.findIndex(c => c.id === commentId);
+    if (commentIndex === -1) return res.status(404).json({ error: "Comment not found" });
+
+    post.comments.splice(commentIndex, 1);
+    res.json({ success: true, message: "Comment deleted" });
+}
+)
+
+
+app.patch('/comment/:id/:commentId', (req, res) => {
+    const post = posts.find(t => t.id === req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    const commentId = req.params.commentId;
+    const comment = post.comments.find(c => c.id === commentId);
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+    comment.text = req.body.comment;
+    res.json({ success: true, message: "Comment updated" });
+})
+    
 
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;

@@ -1,9 +1,17 @@
 <%- include("partials/navbar.ejs") %>
   <div class="main">
     <div class="profile">
-      <h1>Profile of <%= user.username %>
-      </h1>
-      <button class="follow-button" data-user-id="<%= user.id %>">Follow</button>
+      <h1>Profile of <%= user.username %> 
+      </h1>    
+      <% if (user.id !== locals.user_id) { %>
+      <button class="follow-button"  id="follow-<%=user.id%>" data-user-id="<%= user.id %>">
+        <% if (user.followed.some(x => x===locals.user_id)) { %>
+          Unfollow
+          <% } else { %> 
+        Follow
+         <% } %>
+      </button>
+      <% } %>
 
       <div class="posts">
         <% if (posts && posts.length> 0) { %>

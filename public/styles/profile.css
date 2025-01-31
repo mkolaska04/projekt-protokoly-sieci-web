@@ -16,3 +16,16 @@
   flex-direction: column-reverse; /* Kolejność od góry do dołu */
   gap: 15px; /* Odstęp między postami */
 }
+.comment{
+  border:solid 2px var(--outline);
+  width: 90%;
+  border-radius: 8px ;
+  padding: 8px;
+  background-color: white;
+}
+.comment-list{
+  display: flex;
+  flex-direction: column-reverse; /* Kolejność od góry do dołu */
+  gap: 15px; /* Odstęp między postami */
+  width:100%;
+}

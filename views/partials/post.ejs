@@ -1,43 +1,65 @@
 <div class="post" id="post-<%=post.id%>">
-  <div class="post__header">
-      <p class="post__author">Author: <%= post.username %></p>
-      <p class="post__date"><%= post.date %></p>
-      <h2 class="post-title"><%= post.title %></h2>
-      <% if (post.user_id === user_id) { %>
-        <button class="edit-button" data-post-id="<%= post.id %>">✏️ Edytuj</button>
-        <button class="delete-button" data-post-id="<%= post.id %>">🗑️ Usuń</button>
-    <% } %>
-  </div>
-  <div class="post__content" id="post-content-<%=post.id%>">
-      <%= post.content %>
-  </div>
-  <div class="post__footer">
-      <span id="like-count-<%= post.id %>"><%= post.likes ? post.likes.size : 0 %></span>
-      <button class="like-button" data-post-id="<%= post.id %>">Like</button>
-      <span id="comment-count-<%= post.id %>"><%= post.comments ? post.comments.length : 0 %></span>
-      <button class="open-comment-modal" id="open-comment-modal" data-post-id="<%= post.id %>">Comment</button>
-      <div id="comment-modal-<%= post.id %>" class="modal comment-modal">
-        <div class="modal-content" id="comment-modal-<%post.id%>">
-            <span class="close-btn" id="close-comments">&times;</span>
-            <h2>Comments</h2>
-            <div id="comment-list-<%= post.id %>">
-                <% if (post.comments && post.comments.length > 0) { %>
-                    <% post.comments.forEach(function(comment) { %>
-                        <div class="comment">
-                            <b><%=comment.username %></b>:<%= comment.text %>
-                        </div>
-                    <% }) %>
-                <% } else { %>
-                    <p>No comments yet</p>
-                <% } %>
-            </div>
-            
-            <form class="comment-form" data-post-id="<%= post.id %>">
-                <input type="hidden" class="comment-post-id" value="<%= post.id %>">  
-                <textarea class="comment-text" placeholder="Write a comment..." required></textarea>
-                <button type="submit">Post Comment</button>
-            </form>
-        </div>
+    <div class="post__header">
+        <a href="/profile/<%=post.user_id%>" class="post__author">Author: <%= post.username %></a>
+        <p class="post__date">
+            <%= post.date %>
+        </p>
+        <h2 class="post-title">
+            <%= post.title %>
+        </h2>
+        <% if (post.user_id===user_id) { %>
+            <button class="edit-button" data-post-id="<%= post.id %>">✏️ Edytuj</button>
+            <button class="delete-button" data-post-id="<%= post.id %>">🗑️ Usuń</button>
+            <% } %>
     </div>
-  </div>
+    <div class="post__content" id="post-content-<%=post.id%>">
+        <%= post.content %>
+    </div>
+    <div class="post__footer">
+        <span id="like-count-<%= post.id %>">
+            <%= post.likes ? post.likes.size : 0 %>
+        </span>
+        <% if (post.likes && post.likes.has(user_id)) { %>
+            <button class="like-button" id="like-button-<%=post.id%>" data-post-id="<%= post.id %>">Unlike</button>
+            <% } else { %>
+                <button class="like-button" id="like-button-<%=post.id%>" data-post-id="<%= post.id %>">Like</button>
+                <% } %>
+                    <span id="comment-count-<%= post.id %>">
+                        <%= post.comments ? post.comments.length : 0 %>
+                    </span>
+                    <button class="open-comment-modal" id="open-comment-modal"
+                        data-post-id="<%= post.id %>">Comment</button>
+                    <div id="comment-modal-<%= post.id %>" class="modal comment-modal">
+                        <div class="modal-content" id="comment-modal-<%post.id%>">
+                            <span class="close-btn" id="close-comments">&times;</span>
+                            <h2>Comments</h2>
+                            <div class="comment-list" id="comment-list-<%= post.id %>" >
+                                <% if (post.comments && post.comments.length> 0) { %>
+                                    <% post.comments.forEach(function(comment) { %>
+                                        <div class="comment" id="comment-<%=comment.id%>" >
+                                            <b>
+                                                <%=comment.username %>
+                                            </b>:<div id="comment-text-<%=comment.id%>"> <%= comment.text %> </div>
+                                                <% if (comment.user_id===user_id) { %>
+                                                    <button class="delete-comment" id="delete-comment-<%=comment.id%>"
+                                                        data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>">🗑️</button>
+                                                    <button class="edit-comment" id="edit-comment-<%=comment.id%>"
+                                                        data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>"" %>">✏️</button>
+                                                    <% } %>
+
+                                        </div>
+                                        <% }) %>
+                                            <% } else { %>
+                                                <p>No comments yet</p>
+                                                <% } %>
+                            </div>
+
+                            <form class="comment-form" data-post-id="<%= post.id %>">
+                                <input type="hidden" class="comment-post-id" value="<%= post.id %>">
+                                <textarea class="comment-text" placeholder="Write a comment..." required></textarea>
+                                <button type="submit">Post Comment</button>
+                            </form>
+                        </div>
+                    </div>
+    </div>
 </div>

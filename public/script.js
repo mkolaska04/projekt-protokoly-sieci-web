@@ -27,6 +27,72 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('modal-overlay').style.display = "none";
         });
     });
+    document.querySelectorAll('.delete-comment').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            const commentId = this.dataset.commentId;
+            const postId = this.dataset.postId;
+            if (!confirm("❌ Czy na pewno chcesz usunąć ten komentarz?")) return;
+            fetch(`/comment/${postId}/${commentId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("✅ Komentarz został usunięty!");
+                        document.getElementById(`comment-${commentId}`).remove();
+                    } else {
+                        alert(`🚨 Błąd: ${data.error}`);
+                    }
+                })
+                .catch(error => console.error("❌ Błąd usuwania komentarza:", error));
+        });
+    });
+
+
+    document.querySelectorAll('.edit-comment').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            const commentId = this.dataset.commentId;
+            const postId = this.dataset.postId;
+            const commentElement = document.getElementById(`comment-text-${commentId}`);
+            const currentContent = commentElement.innerText;
+            const editForm = document.createElement('div');
+            editForm.innerHTML = `
+                <textarea id="edit-comment-${commentId}" rows="3">${currentContent}</textarea>
+                <button class="save-edit-comment" data-post-id="${postId}" data-comment-id="${commentId}">💾 Zapisz</button>
+                <button class="cancel-edit-comment" data-post-id="${postId}" data-comment-id="${commentId}">❌ Anuluj</button>
+            `;
+            commentElement.replaceWith(editForm);
+
+            document.querySelector(`.save-edit-comment[data-comment-id="${commentId}"]`).addEventListener('click', function () {
+                const newContent = document.querySelector(`#edit-comment-${commentId}`).value.trim();
+                if (!newContent || newContent === currentContent) return;
+
+                fetch(`/comment/${postId}/${commentId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: newContent })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert("✅ Komentarz został zaktualizowany!");
+                            editForm.replaceWith(commentElement);
+                            commentElement.innerText = newContent;
+                        } else {
+                            alert(`🚨 Błąd: ${data.error}`);
+                        }
+                    })
+                    .catch(error => console.error("❌ Błąd edycji komentarza:", error));
+            });
+
+        })
+    });
+
+
+
 
     document.querySelectorAll(".delete-button").forEach(button => {
         button.addEventListener("click", function (event) {
@@ -60,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const postContentElement = document.querySelector(`#post-content-${postId}`);
             const currentContent = postContentElement.innerText;
             console.log(currentContent)
-            // 🔥 Dodajemy dynamicznie pole do edycji zamiast prompt()
             const editForm = document.createElement("div");
             editForm.innerHTML = `
                 <textarea id="edit-textarea-${postId}" rows="3">${currentContent}</textarea>
@@ -219,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
                 .then(response => response.json())
                 .then(data => {
-                    this.innerText = data.following ? "Unfollow" : "Follow";
+                    document.querySelector(`#follow-${userId}`).innerText = data.followed ? "Unfollow" : "Follow";
                 })
                 .catch(error => console.error("Error:", error));
         }
@@ -242,22 +307,87 @@ document.addEventListener('DOMContentLoaded', () => {
             })
                 .then(response => response.json())
                 .then(data => {
-                    addCommentToDOM(postId, data.comment.username, data.comment.text);
+                    addCommentToDOM(postId, data.comment.id, data.comment.username, data.comment.text);
                     this.querySelector('.comment-text').value = "";
                 })
                 .catch(error => console.error("Error posting comment:", error));
         });
     });
 
-    function addCommentToDOM(postId, username, text) {
+    function addCommentToDOM(postId, commentId, username, text) {
         const commentSection = document.querySelector(`#comment-list-${postId}`);
         if (commentSection) {
             const commentElement = document.createElement('div');
             commentElement.classList.add('comment');
-            commentElement.innerHTML = `<b>${username}:</b> ${text}`;
+            commentElement.innerHTML = `<b>${username}</b>:<div id="comment-text-${commentId}">${text} </div>
+                                                    <button class="delete-comment" id="delete-comment-${commentId}"
+                                                        data-comment-id="${commentId}" data-post-id="${postId}">🗑️</button>
+                                                    <button class="edit-comment" id="edit-comment-${commentId}"
+                                                        data-comment-id="${commentId}" data-post-id="${postId}">✏️</button>`
             commentSection.appendChild(commentElement);
+            document.querySelector(`#delete-comment-${commentId}`).addEventListener('click', function (event) {
+                event.preventDefault();
+                const commentId = this.dataset.commentId;
+                const postId = this.dataset.postId;
+                if (!confirm("❌ Czy na pewno chcesz usunąć ten komentarz?")) return;
+                fetch(`/comment/${postId}/${commentId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert("✅ Komentarz został usunięty!");
+                            document.getElementById(`comment-${commentId}`).remove();
+                        } else {
+                            alert(`🚨 Błąd: ${data.error}`);
+                        }
+                    })
+                    .catch(error => console.error("❌ Błąd usuwania komentarza:", error));
+            }
+            );
+
+            document.querySelector(`#edit-comment-${commentId}`).addEventListener('click', function (event) {
+                event.preventDefault();
+                const commentId = this.dataset.commentId;
+                const postId = this.dataset.postId;
+                const commentElement = document.getElementById(`comment-text-${commentId}`);
+                const currentContent = commentElement.innerText;
+                const editForm = document.createElement('div');
+                editForm.innerHTML = `
+                <textarea id="edit-comment-${commentId}" rows="3">${currentContent}</textarea>
+                <button class="save-edit-comment" data-post-id="${postId}" data-comment-id="${commentId}">💾 Zapisz</button>
+                <button class="cancel-edit-comment" data-post-id="${postId}" data-comment-id="${commentId}">❌ Anuluj</button>
+            `;
+                commentElement.replaceWith(editForm);
+
+                document.querySelector(`.save-edit-comment[data-comment-id="${commentId}"]`).addEventListener('click', function () {
+                    const newContent = document.querySelector(`#edit-comment-${commentId}`).value.trim();
+                    if (!newContent || newContent === currentContent) return;
+
+                    fetch(`/comment/${postId}/${commentId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: newContent })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert("✅ Komentarz został zaktualizowany!");
+                                editForm.replaceWith(commentElement);
+                                commentElement.innerText = newContent;
+                            } else {
+                                alert(`🚨 Błąd: ${data.error}`);
+                            }
+                        })
+                        .catch(error => console.error("❌ Błąd edycji komentarza:", error));
+                });
+
+            });
         }
     }
+
+
 
     function updateCommentCount(postId, count) {
         const commentCountElement = document.querySelector(`#comment-count-${postId}`);
@@ -278,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(response => response.json())
                 .then(data => {
                     document.querySelector(`#like-count-${postId}`).innerText = data.likes;
-                    this.classList.toggle("liked", data.userLiked);
+                    document.querySelector(`#like-button-${postId}`).innerText = data.userLiked ? "Unlike" : "Like";
                 })
                 .catch(error => console.error("Error:", error));
         });
