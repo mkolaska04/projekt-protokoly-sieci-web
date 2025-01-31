@@ -1,16 +1,21 @@
 <div class="post" id="post-<%=post.id%>">
     <div class="post__header">
+        <div class="upperbar">
         <a href="/profile/<%=post.user_id%>" class="post__author">Author: <%= post.username %></a>
+        <div class="post-btns">
+            <% if (post.user_id===user_id) { %>
+                <button class="edit-button" data-post-id="<%= post.id %>">✏️ Edytuj</button>
+                <button class="delete-button" data-post-id="<%= post.id %>">🗑️ Usuń</button>
+                <% } %>
+        </div>
+        </div>
         <p class="post__date">
             <%= post.date %>
         </p>
         <h2 class="post-title">
             <%= post.title %>
         </h2>
-        <% if (post.user_id===user_id) { %>
-            <button class="edit-button" data-post-id="<%= post.id %>">✏️ Edytuj</button>
-            <button class="delete-button" data-post-id="<%= post.id %>">🗑️ Usuń</button>
-            <% } %>
+       
     </div>
     <div class="post__content" id="post-content-<%=post.id%>">
         <%= post.content %>

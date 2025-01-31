@@ -108,4 +108,26 @@ textarea {
 
 
 
+.post__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+} 
+.upperbar{
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
 
+.post__content{ 
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 16px;
+  font-size: 1.4rem;
+  word-wrap: break-all; 
+}

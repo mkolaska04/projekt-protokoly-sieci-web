@@ -220,6 +220,9 @@ app.post('/signup', async (req, res) => {
 
 // ACCOUNT SEARCH I FOLLOW KONTA
 app.get('/explore', (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
     const pattern = req.query.search ? req.query.search.toLowerCase() : "";
     const results = pattern ? users.filter(u => u.username.toLowerCase().includes(pattern)) : [];
 
@@ -259,6 +262,9 @@ app.post('/follow/:id', (req, res) => {
 
 // PROFILE PAGE
 app.get('/profile/:id', (req, res) => {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
     const { id } = req.params;
     const user = users.find(u => u.id === id);
     const userPosts = posts.filter(post => post.user_id === id);
