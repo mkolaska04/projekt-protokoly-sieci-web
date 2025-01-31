@@ -5,12 +5,9 @@
       </h1>
       <% if (locals.user_id===user.id) { %>
         <div class="edit" id="edit-<%=user.id%>">
-          <button data-user-id="<%=user.id%>" data-type="username" class="edit-profile"
-            id="edit-username-<%= user.id %>">Edit username</button>
-          <button data-user-id="<%=user.id%>" data-type="email" class="edit-profile"
-            id="edit-email-<%= user.id %>">Change email</button>
-          <button data-user-id="<%=user.id%>" data-type="password" class="edit-profile"
-            id="edit-password-<%= user.id %>">Change password</button>
+          <button class="edit-profile-btn" data-user-id="<%=user.id%>" data-type="username" class="edit-profile" id="edit-username-<%= user.id %>">Edit username</button>
+          <button class="edit-profile-btn" data-user-id="<%=user.id%>" data-type="email" class="edit-profile" id="edit-email-<%= user.id %>">Change email</button>
+          <button class="edit-profile-btn" data-user-id="<%=user.id%>" data-type="password" class="edit-profile" id="edit-password-<%= user.id %>">Change password</button>
         </div>
 
         <% } %>

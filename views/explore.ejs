@@ -1,7 +1,6 @@
 <%- include("partials/navbar.ejs") %>
     <div class="main">
-        <form method="get" action="/explore">
-            <label for="search">Search</label>
+        <form id="explore-form" method="get" action="/explore">
             <input type="text" id="search" name="search" placeholder="Search" value="<%= searchQuery %>">
             <button type="submit">Search</button>
         </form>

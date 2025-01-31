@@ -1,4 +1,11 @@
 
+button{
+  transition: all 0.3s ease-in-out; 
+}
+button:hover{
+  filter:brightness(0.8); ;
+}
+
 .modal {
   display: none;
     position: fixed;
@@ -92,6 +99,12 @@ textarea {
 }
 
 
+.upper-part{
+  width:100%;
+  display: flex;
+  align-items: center;
+  justify-content:space-between ;
+}
 
 
 

@@ -20,7 +20,7 @@
             <%= post.likes ? post.likes.size : 0 %>
         </span>
         <% if (post.likes && post.likes.has(user_id)) { %>
-            <button class="like-button" id="like-button-<%=post.id%>" data-post-id="<%= post.id %>">Unlike</button>
+            <button class="like-button" id="like-button-<%=post.id%>" data-post-id="<%= post.id %>">Dislike</button>
             <% } else { %>
                 <button class="like-button" id="like-button-<%=post.id%>" data-post-id="<%= post.id %>">Like</button>
                 <% } %>
@@ -37,15 +37,21 @@
                                 <% if (post.comments && post.comments.length> 0) { %>
                                     <% post.comments.forEach(function(comment) { %>
                                         <div class="comment" id="comment-<%=comment.id%>" >
+                                            <div class="upper-part">
                                             <b>
                                                 <%=comment.username %>
-                                            </b>:<div id="comment-text-<%=comment.id%>"> <%= comment.text %> </div>
-                                                <% if (comment.user_id===user_id) { %>
-                                                    <button class="delete-comment" id="delete-comment-<%=comment.id%>"
-                                                        data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>">🗑️</button>
-                                                    <button class="edit-comment" id="edit-comment-<%=comment.id%>"
-                                                        data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>"" %>">✏️</button>
-                                                    <% } %>
+                                            </b>
+                                            <div class="buttons">
+                                            <% if (comment.user_id===user_id) { %>
+                                                <button class="delete-comment" id="delete-comment-<%=comment.id%>"
+                                                    data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>">🗑️</button>
+                                                <button class="edit-comment" id="edit-comment-<%=comment.id%>"
+                                                    data-comment-id="<%= comment.id %>" data-post-id="<%=post.id%>"" %>">✏️</button>
+                                                <% } %>
+                                            </div>
+                                            </div>  
+                                            <div id="comment-text-<%=comment.id%>"> <%= comment.text %> </div>
+                                              
 
                                         </div>
                                         <% }) %>

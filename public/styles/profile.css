@@ -13,8 +13,8 @@
 }
 .posts {
   display: flex;
-  flex-direction: column-reverse; /* Kolejność od góry do dołu */
-  gap: 15px; /* Odstęp między postami */
+  flex-direction: column-reverse; 
+  gap: 15px; 
 }
 .comment{
   border:solid 2px var(--outline);
@@ -25,7 +25,18 @@
 }
 .comment-list{
   display: flex;
-  flex-direction: column-reverse; /* Kolejność od góry do dołu */
-  gap: 15px; /* Odstęp między postami */
+  flex-direction: column-reverse; 
+  gap: 15px; 
   width:100%;
+}
+.edit-profile-btn {
+  background-color: var(--primary-color);
+  padding: 16px;
+  border-radius: 16px ;
+}
+
+.follow-button{
+  background-color: var(--primary-color);
+  padding: 16px;
+  border-radius:16px ;
 }

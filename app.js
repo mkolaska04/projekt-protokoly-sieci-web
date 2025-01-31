@@ -31,7 +31,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(authenticateUser);
 
-
+// MQTT
 const mqttClient = mqtt.connect('mqtt://test.mosquitto.org');
 mqttClient.on('connect', () => {
     console.log('Connected to MQTT Broker');
@@ -47,10 +47,9 @@ mqttClient.on('message', (topic, message) => {
     console.log(`Received message: ${message.toString()} on topic: ${topic}`);
 });
 
+// WEBOCKET
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-
-
 
 wss.on("connection", (ws, req) => {
     console.log("🔌 Nowe połączenie WebSocket!");
@@ -80,6 +79,12 @@ wss.on("connection", (ws, req) => {
     });
 });
 
+server.listen(8080, () => {
+    console.log(`Server running at http://localhost:8080}`);
+}
+)
+
+// USER ID, INFON UPDATE
 app.get("/current-user", (req, res) => {
     if (!req.cookies.user_id) {
         return res.status(401).json({ error: "User not logged in" });
@@ -87,10 +92,7 @@ app.get("/current-user", (req, res) => {
     res.json({ userId: req.cookies.user_id });
 });
 
-server.listen(8080, () => {
-    console.log(`Server running at http://localhost:8080}`);
-}
-)
+
 
 app.get('/users/:id', (req, res) => {
     const user = users.find(u => u.id === req.params.id);
@@ -101,7 +103,7 @@ app.get('/users/:id', (req, res) => {
 app.patch('/users/:id', (req, res) => {
     const user = users.find(u => u.id === req.params.id);
     if (!user) return res.status(404).json({ error: "User not found" });
-    const { type, value } = req.body; 
+    const { type, value } = req.body;
     if (type === "password") {
         user.password = bcrypt.hashSync(value, 10);
     } else {
@@ -112,6 +114,9 @@ app.patch('/users/:id', (req, res) => {
     }
     res.status(200).json({ success: true, message: "User updated", user });
 })
+
+
+//LANDING PAGE
 app.get('/home', (req, res) => {
     if (!req.user) {
         return res.redirect('/login');
@@ -128,14 +133,92 @@ app.get('/following', (req, res) => {
     const user_id = req.user.id;
     const followedusers = users.filter(user => user.followed.includes(user_id));
     const followedPosts = followedusers.flatMap(user => user.posts)
-   
+
     return res.render('home', { posts: followedPosts });
 });
 
+app.get('/', (req, res) => {
+    if (req.cookies.username) {
+        res.redirect('/home');
+    }
+    res.redirect('/login');
+});
+
+// LOGIN, LOGUT, SIGNUP
 app.get('/login', (req, res) => {
     res.render('login');
 });
 
+app.get('/logout', (req, res) => {
+    res.clearCookie('username');
+    res.locals.isLoggedIn = false;
+    res.redirect('/login');
+});
+
+function authenticateUser(req, res, next) {
+    const username = req.cookies.username;
+    if (username) {
+        const user = users.find((u) => u.username === username);
+        if (user) {
+            req.user = user;
+            res.locals.isLoggedIn = true;
+            res.locals.username = user.username;
+            res.locals.user_id = user.id;
+            console.log('User is logged in:', username);
+            console.log('isLoggedIn in middleware:', res.locals.isLoggedIn);
+            return next();
+        }
+    }
+    res.locals.isLoggedIn = false;
+    next();
+}
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    const user = users.find((u) => u.email === email);
+    if (!user) {
+        return res.render('login', { error: 'There is no account linked to this email' });
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        return res.render('login', { error: 'Incorrect password' });
+    }
+
+    res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
+    res.cookie('username', user.username, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24, secure: false, sameSite: 'Lax' });
+    res.redirect('/home');
+});
+
+app.get('/signup', async (req, res) => {
+    res.render('signup');
+})
+
+app.post('/signup', async (req, res) => {
+    const { username, email, password, password2 } = req.body;
+    if (password !== password2) {
+        return res.render('signup', { error: 'Passwords do not match' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    if (users.find((u) => u.email === email)) {
+        return res.render('signup', { error: 'User with this email already exists' });
+    } else {
+        const user = {
+            id: v4(),
+            username,
+            email,
+            password: hashedPassword,
+            followed: []
+
+        };
+        users.push(user);
+        res.cookie('username', user.username, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
+        res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
+        res.redirect('/home');
+    }
+});
+
+
+// ACCOUNT SEARCH I FOLLOW KONTA
 app.get('/explore', (req, res) => {
     const pattern = req.query.search ? req.query.search.toLowerCase() : "";
     const results = pattern ? users.filter(u => u.username.toLowerCase().includes(pattern)) : [];
@@ -145,22 +228,6 @@ app.get('/explore', (req, res) => {
     res.render('explore', { results, searchQuery: req.query.search || "" });
 });
 
-
-app.get('/logout', (req, res) => {
-    res.clearCookie('username');
-    res.locals.isLoggedIn = false;
-    res.redirect('/login');
-});
-
-
-app.get('/profile/:id', (req, res) => {
-    const { id } = req.params;
-    const user = users.find(u => u.id === id);
-    const userPosts = posts.filter(post => post.user_id === id);
-
-    res.render('profile', { posts: userPosts, user: user });
-});
-
 app.post('/follow/:id', (req, res) => {
     const follower_id = req.user.id;
     const follower = users.find(u => u.id === follower_id);
@@ -168,7 +235,7 @@ app.post('/follow/:id', (req, res) => {
     const user = users.find(u => u.id === id);
 
     if (!user) return res.status(404).send('User not found');
-    if (user.followed.some(x => x===follower_id)) {
+    if (user.followed.some(x => x === follower_id)) {
         user.followed = user.followed.filter(f => f !== follower_id);
         console.log(`🚫 Użytkownik ${follower_id} przestał obserwować użytkownika ${id}`);
         res.json({ success: true, followed: false });
@@ -190,14 +257,19 @@ app.post('/follow/:id', (req, res) => {
 
 
 
-app.get('/create', (req, res) => {
-    res.render('home', { modal: true, posts: posts });
-})
-console.log(new Date().toISOString());
+// PROFILE PAGE
+app.get('/profile/:id', (req, res) => {
+    const { id } = req.params;
+    const user = users.find(u => u.id === id);
+    const userPosts = posts.filter(post => post.user_id === id);
+
+    res.render('profile', { posts: userPosts, user: user });
+});
 
 
 
 
+// POSTS COMMENTS LIKES
 app.post('/create', (req, res) => {
     const { title, content } = req.body;
     const user_id = req.user.id;
@@ -224,7 +296,6 @@ app.post('/create', (req, res) => {
 });
 
 
-
 app.patch("/edit/:id", (req, res) => {
     const postId = req.params.id;
     const userId = req.cookies.user_id;
@@ -238,7 +309,7 @@ app.patch("/edit/:id", (req, res) => {
     }
 
     post.content = content;
-    
+
     mqttClient.publish("posts/update", JSON.stringify(post));
     return res.status(200).json({ success: true, message: "Post zaktualizowany!", post });
 });
@@ -260,24 +331,6 @@ app.delete("/delete/:id", (req, res) => {
     return res.status(200).json({ success: true, message: "Post usunięty!" });
 });
 
-
-function authenticateUser(req, res, next) {
-    const username = req.cookies.username;
-    if (username) {
-        const user = users.find((u) => u.username === username);
-        if (user) {
-            req.user = user;
-            res.locals.isLoggedIn = true;
-            res.locals.username = user.username;
-            res.locals.user_id = user.id;
-            console.log('User is logged in:', username);
-            console.log('isLoggedIn in middleware:', res.locals.isLoggedIn);
-            return next();
-        }
-    }
-    res.locals.isLoggedIn = false;
-    next();
-}
 
 app.post('/like/:id', (req, res) => {
     const postId = req.params.id;
@@ -301,22 +354,29 @@ app.post('/like/:id', (req, res) => {
     mqttClient.publish('posts/like', JSON.stringify({ postId, likes: likeCount }));
     const liker = users.find((u) => u.id === userId)?.username || "Unknown";
 
-    console.log(`👍 Post '${post.title}' polubiony przez ${liker}`);
     const authorWs = clients.get(post.user_id);
 
     if (authorWs && authorWs.readyState === WebSocket.OPEN) {
         console.log(`📡 Wysyłanie powiadomienia do autora ${post.user_id}`);
-        authorWs.send(JSON.stringify({
-            type: "post_liked",
-            postTitle: post.title,
-            liker: liker,
-        }));
-    } else {
-        console.log(`🚨 Autor ${post.user_id} NIE jest online!`);
+        if (post.likes.has(userId)) {
+            authorWs.send(JSON.stringify({
+                type: "post_liked",
+                postTitle: post.title,
+                liker: liker,
+            }));
+        } //else {
+        //     authorWs.send(JSON.stringify({
+        //         type: "post_disliked",
+        //         postTitle: post.title,
+        //         liker: liker,
+        //     }))
+        // }
     }
-    return res.json({ success: true, likes: likeCount, userLiked: post.likes.has(userId) });
-});
-
+    else {
+            console.log(`🚨 Autor ${post.user_id} NIE jest online!`);
+    }
+        return res.json({ success: true, likes: likeCount, userLiked: post.likes.has(userId) });
+    });
 
 
 app.get('/comment/:id', (req, res) => {
@@ -324,8 +384,6 @@ app.get('/comment/:id', (req, res) => {
     if (!post) return res.status(404).json({ error: "Post not found" });
     res.json(post.comments);
 });
-
-
 
 
 app.post('/comment/:id', (req, res) => {
@@ -341,7 +399,7 @@ app.post('/comment/:id', (req, res) => {
     };
 
     post.comments.push(newComment);
- 
+
 
     const message = JSON.stringify({
         event: "newComment",
@@ -396,60 +454,7 @@ app.patch('/comment/:id/:commentId', (req, res) => {
     comment.text = req.body.comment;
     res.json({ success: true, message: "Comment updated" });
 })
-    
 
-app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    const user = users.find((u) => u.email === email);
-    if (!user) {
-        return res.render('login', { error: 'There is no account linked to this email' });
-    }
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        return res.render('login', { error: 'Incorrect password' });
-    }
-
-    res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
-    res.cookie('username', user.username, {httpOnly: true, maxAge: 1000 * 60 * 60 * 24, secure:false, sameSite:'Lax'});
-    res.redirect('/home');
-});
-
-app.get('/signup', async (req, res) => {
-    const haslo = await bcrypt.hash("user123", 10);
-    console.log(haslo);
-    res.render('signup');
-})
-
-app.post('/signup', async (req, res) => {
-    const { username, email, password, password2 } = req.body;
-    if (password !== password2) {
-        return res.render('signup', { error: 'Passwords do not match' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    if (users.find((u) => u.email === email)) {
-        return res.render('signup', { error: 'User with this email already exists' });
-    } else {
-        const user = {
-            id: v4(),
-            username,
-            email,
-            password:hashedPassword,
-            followed: []
-
-        };
-        users.push(user);
-        res.cookie('username', user.username, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
-        res.cookie("user_id", user.id, { httpOnly: true, maxAge: 1000 * 60 * 60 * 24 });
-        res.redirect('/home');
-    }
-});
-
-app.get('/', (req, res) => {
-    if (req.cookies.username) {
-        res.redirect('/home');
-    }
-    res.redirect('/login');
-});
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);

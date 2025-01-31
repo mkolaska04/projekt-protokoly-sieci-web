@@ -1,0 +1,7 @@
+#explore-form{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: 2rem 0;
+}
